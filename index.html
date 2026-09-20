@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Nusoq — User App Prototype</title>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="brand-mark">N</div>NUSOQ</div>
+    <div class="nav-label">Workspace</div>
+    <div class="nav-item active" data-page="home"><div class="nav-left"><div class="nav-icon">H</div>Home</div></div>
+    <div class="nav-item" data-page="projects"><div class="nav-left"><div class="nav-icon">P</div>Projects</div><span class="badge-count">3</span></div>
+    <div class="nav-item" data-page="tools"><div class="nav-left"><div class="nav-icon">T</div>My Tools</div></div>
+    <div class="nav-item" data-page="tasks"><div class="nav-left"><div class="nav-icon">✓</div>My Tasks</div><span class="badge-count">7</span></div>
+    <div class="nav-item" data-page="files"><div class="nav-left"><div class="nav-icon">F</div>Files</div></div>
+    <div class="nav-label">Account</div>
+    <div class="nav-item" data-page="licenses"><div class="nav-left"><div class="nav-icon">L</div>Licenses</div></div>
+    <div class="nav-item" data-page="workspace"><div class="nav-left"><div class="nav-icon">W</div>Workspace</div></div>
+    <div class="nav-item" data-page="settings"><div class="nav-left"><div class="nav-icon">S</div>Settings</div></div>
+    <div class="sidebar-bottom">
+      <div class="profile-mini"><div class="avatar">BA</div><div class="profile-text"><strong>Basim Alzahrani</strong><span>Personal workspace</span></div></div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn mobile-menu" id="menuBtn">☰</button>
+      <div class="search">⌕ <input placeholder="Search projects, tools or files..."/></div>
+      <div class="top-actions"><button class="icon-btn">?</button><button class="icon-btn">⌁</button><button class="btn btn-primary" id="activateBtn">＋ Activate License</button><div class="avatar">BA</div></div>
+    </header>
+    <div class="content">
+      <section class="page active" id="home">
+        <div class="page-head"><div><div class="eyebrow">Overview</div><h1>Good morning, Basim</h1><p>Here’s what’s happening across your Nusoq workspace today.</p></div><button class="btn btn-secondary" id="activateBtn2">Activate License</button></div>
+        <div class="cards">
+          <div class="metric"><div class="metric-top"><div class="metric-icon">T</div><span class="delta">2 active</span></div><strong>4</strong><span>Available tools</span></div>
+          <div class="metric"><div class="metric-top"><div class="metric-icon">P</div><span class="delta">+1 this month</span></div><strong>3</strong><span>Active projects</span></div>
+          <div class="metric"><div class="metric-top"><div class="metric-icon">✓</div><span class="delta">4 due soon</span></div><strong>12</strong><span>Open tasks</span></div>
+          <div class="metric"><div class="metric-top"><div class="metric-icon">F</div><span class="delta">+8 this week</span></div><strong>38</strong><span>Generated files</span></div>
+        </div>
+        <div class="section two-col">
+          <div class="panel"><div class="panel-head"><h3>Active products</h3><button class="link-btn" data-goto="tools">View all →</button></div><div class="tool-list compact"><div class="tool-row"><div><div class="tool-icon sm">BQ</div></div><div class="grow"><strong>BOQ + Specs</strong><span>Personal • 26 days left</span><div class="progress-line"><span style="width:62%"></span></div></div><button class="btn btn-secondary" data-goto="tools">Open</button></div><div class="tool-row"><div><div class="tool-icon sm">DR</div></div><div class="grow"><strong>Daily Reports</strong><span>Personal • 11 days left</span><div class="progress-line"><span style="width:36%"></span></div></div><button class="btn btn-secondary" data-goto="tools">Open</button></div></div></div>
+          <div class="panel"><div class="panel-head"><h3>Tasks requiring attention</h3><button class="link-btn" data-goto="tasks">View tasks →</button></div><div class="task-list"><div class="task"><div class="checkbox"></div><div class="task-main"><strong>Submit CCTV Shop Drawing</strong><span>Tahakom Al-Qirawan • Due Sep 24</span></div><span class="priority high">HIGH</span></div><div class="task"><div class="checkbox"></div><div class="task-main"><strong>Review revised BOQ</strong><span>Office Renovation • Due Sep 25</span></div><span class="priority medium">MED</span></div><div class="task"><div class="checkbox"></div><div class="task-main"><strong>Issue weekly report</strong><span>Tahakom Al-Qirawan • Due Sep 26</span></div><span class="priority low">LOW</span></div></div></div>
+        </div>
+        <div class="section panel table-wrap"><div class="panel-head"><h3>Recent files</h3><button class="link-btn" data-goto="files">Open files →</button></div><table class="table"><thead><tr><th>File</th><th>Tool</th><th>Project</th><th>Modified</th></tr></thead><tbody><tr><td>BOQ_Specs_Rev03.xlsx</td><td>BOQ + Specs</td><td>Tahakom Al-Qirawan</td><td>Today 10:14</td></tr><tr><td>Daily_Report_2026-09-19.pdf</td><td>Daily Reports</td><td>Tahakom Al-Qirawan</td><td>Yesterday</td></tr><tr><td>Cost_Dashboard.xlsx</td><td>Smart Dashboard</td><td>Office Renovation</td><td>Sep 18</td></tr></tbody></table></div>
+      </section>
+
+      <section class="page" id="projects"><div class="page-head"><div><div class="eyebrow">Workspace</div><h1>Projects</h1><p>Keep every generated file and task organized by project.</p></div><button class="btn btn-primary">＋ New Project</button></div><div class="project-grid"><div class="project-card"><span class="project-code">THK</span><h3>Tahakom Al-Qirawan</h3><p>Fit-out & renovation coordination</p><div class="project-stats"><span><b>19</b> files</span><span><b>7</b> tasks</span></div><button class="btn btn-secondary full">Open Project</button></div><div class="project-card"><span class="project-code">OR</span><h3>Office Renovation</h3><p>Commercial interior project</p><div class="project-stats"><span><b>12</b> files</span><span><b>3</b> tasks</span></div><button class="btn btn-secondary full">Open Project</button></div><div class="project-card"><span class="project-code">VP</span><h3>Villa Project</h3><p>Private residential works</p><div class="project-stats"><span><b>7</b> files</span><span><b>2</b> tasks</span></div><button class="btn btn-secondary full">Open Project</button></div></div></section>
+
+      <section class="page" id="tools"><div class="page-head"><div><div class="eyebrow">Products</div><h1>My Tools</h1><p>Your engineering toolbox. Activate only what you need.</p></div><button class="btn btn-primary" id="activateBtn3">＋ Activate License</button></div><div class="tool-grid"><div class="tool-card active-tool"><span class="tool-badge active-b">ACTIVE • 26 DAYS</span><div class="tool-icon">BQ</div><h3>BOQ + Specs</h3><p>Prepare structured BOQs with recommended technical specifications and missing-information checks.</p><div class="tool-footer"><small>Personal plan</small><button class="btn btn-primary">Open Tool</button></div></div><div class="tool-card locked"><span class="tool-badge locked-b">LOCKED</span><div class="tool-icon">BF</div><h3>BOQ Formatting</h3><p>Clean, normalize and professionally format BOQ spreadsheets for tender or project use.</p><div class="tool-footer"><small>35 SAR / month</small><button class="btn btn-secondary">Buy License</button></div></div><div class="tool-card active-tool"><span class="tool-badge active-b">ACTIVE • 11 DAYS</span><div class="tool-icon">DR</div><h3>Daily Reports</h3><p>Create clear project daily reports with manpower, activities, issues, HSE and site photos.</p><div class="tool-footer"><small>Personal plan</small><button class="btn btn-primary">Open Tool</button></div></div><div class="tool-card locked"><span class="tool-badge locked-b">LOCKED</span><div class="tool-icon">DB</div><h3>Smart Dashboard</h3><p>Turn structured Excel data into useful KPI dashboards and management summaries.</p><div class="tool-footer"><small>50 SAR / month</small><button class="btn btn-secondary">Buy License</button></div></div><div class="tool-card active-tool"><span class="tool-badge included-b">INCLUDED</span><div class="tool-icon">✓</div><h3>My Tasks</h3><p>A simple personal task manager included free while any Nusoq subscription is active.</p><div class="tool-footer"><small>Included</small><button class="btn btn-primary" data-goto="tasks">Open Tasks</button></div></div></div></section>
+
+      <section class="page" id="tasks"><div class="page-head"><div><div class="eyebrow">Included tool</div><h1>My Tasks</h1><p>A lightweight place to organize what you need to finish.</p></div><button class="btn btn-primary">＋ New Task</button></div><div class="task-board"><div class="task-column"><div class="column-head"><strong>Today</strong><span>3</span></div><div class="task-card"><span class="priority high">HIGH</span><h4>Submit CCTV Shop Drawing</h4><p>Tahakom Al-Qirawan</p><small>Due today</small></div><div class="task-card"><span class="priority medium">MED</span><h4>Update communication plan</h4><p>Tahakom Al-Qirawan</p><small>Due today</small></div></div><div class="task-column"><div class="column-head"><strong>Upcoming</strong><span>4</span></div><div class="task-card"><span class="priority medium">MED</span><h4>Review revised BOQ</h4><p>Office Renovation</p><small>Sep 25</small></div><div class="task-card"><span class="priority low">LOW</span><h4>Issue weekly report</h4><p>Tahakom Al-Qirawan</p><small>Sep 26</small></div></div><div class="task-column"><div class="column-head"><strong>Completed</strong><span>18</span></div><div class="task-card done"><h4>Send project meeting minutes</h4><p>Tahakom Al-Qirawan</p><small>Completed Sep 19</small></div></div></div></section>
+
+      <section class="page" id="files"><div class="page-head"><div><div class="eyebrow">Storage</div><h1>Files</h1><p>Your generated Nusoq files stay grouped by project and tool.</p></div><button class="btn btn-secondary">Upload File</button></div><div class="panel table-wrap"><table class="table"><thead><tr><th>Name</th><th>Project</th><th>Generated by</th><th>Size</th><th>Date</th></tr></thead><tbody><tr><td>BOQ_Specs_Rev03.xlsx</td><td>Tahakom Al-Qirawan</td><td>BOQ + Specs</td><td>1.8 MB</td><td>Sep 20</td></tr><tr><td>Daily_Report_2026-09-19.pdf</td><td>Tahakom Al-Qirawan</td><td>Daily Reports</td><td>4.2 MB</td><td>Sep 19</td></tr><tr><td>Cost_Dashboard.xlsx</td><td>Office Renovation</td><td>Smart Dashboard</td><td>2.1 MB</td><td>Sep 18</td></tr></tbody></table></div></section>
+
+      <section class="page" id="licenses"><div class="page-head"><div><div class="eyebrow">Account</div><h1>Licenses</h1><p>See what is active and when each product expires.</p></div><button class="btn btn-primary" id="activateBtn4">＋ Activate License</button></div><div class="panel table-wrap"><table class="table"><thead><tr><th>Product</th><th>Plan</th><th>License</th><th>Status</th><th>Expiry</th></tr></thead><tbody><tr><td>BOQ + Specs</td><td>Personal</td><td>NQ-BQS-P-9X4K-72MD</td><td><span class="status active">Active</span></td><td>Oct 20, 2026</td></tr><tr><td>Daily Reports</td><td>Personal</td><td>NQ-RPT-P-4K9D-81MQ</td><td><span class="status active">Active</span></td><td>Oct 01, 2026</td></tr><tr><td>BOQ Formatting</td><td>—</td><td>—</td><td><span class="status locked-s">Locked</span></td><td>—</td></tr></tbody></table></div></section>
+
+      <section class="page" id="workspace"><div class="page-head"><div><div class="eyebrow">Team</div><h1>Workspace</h1><p>Personal users have one seat. Business plans can create a team workspace with up to 6 members.</p></div></div><div class="workspace-box"><div class="workspace-icon">BA</div><div><h3>Basim’s Workspace</h3><p>Personal workspace • 1 member</p></div><button class="btn btn-secondary">Upgrade to Business</button></div><div class="section panel"><div class="panel-head"><h3>Members</h3></div><div class="member"><div class="avatar">BA</div><div class="grow"><strong>Basim Alzahrani</strong><span>basim@nusoq.sa</span></div><span class="status active">Owner</span></div></div></section>
+
+      <section class="page" id="settings"><div class="page-head"><div><div class="eyebrow">Account</div><h1>Settings</h1><p>Manage your profile and platform preferences.</p></div><button class="btn btn-primary">Save Changes</button></div><div class="panel"><div class="form-grid"><div class="field"><label>Full name</label><input value="Basim Alzahrani"/></div><div class="field"><label>Email</label><input value="basim@nusoq.sa"/></div><div class="field"><label>Language</label><select><option>English</option><option>Arabic</option></select></div><div class="field"><label>Time zone</label><select><option>Riyadh (GMT+3)</option></select></div></div></div></section>
+    </div>
+  </main>
+</div>
+<div class="modal" id="licenseModal"><div class="modal-box"><div class="modal-icon">L</div><h2>Activate a license</h2><p>Enter the serial number you received after purchasing a Nusoq product.</p><div class="field"><label>License key</label><input id="licenseInput" placeholder="NQ-BQS-P-XXXX-XXXX"/></div><div class="modal-actions"><button class="btn btn-secondary" id="closeModal">Cancel</button><button class="btn btn-primary" id="confirmActivate">Activate License</button></div><small>Example only — license validation will be connected to the database later.</small></div></div>
+<div class="preview-switch"><a href="admin.html">Open Admin Portal →</a></div>
+<script src="app.js"></script>
+</body></html>
