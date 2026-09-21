@@ -1,0 +1,12 @@
+/* Nusoq BOQ saved projects + export layer */
+.workspace-btn{display:inline-flex;align-items:center;gap:6px}
+.workspace-count{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#eef7f4;color:#0d6b58;font-size:9px;font-weight:900}
+.projects-modal .modal{width:min(920px,100%)}
+.projects-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.projects-toolbar p{margin:0;font-size:10px;color:#667085}
+.projects-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.project-card{border:1px solid #e4e7ec;border-radius:12px;padding:13px;background:#fff;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.project-card.active{border-color:#79b5a4;box-shadow:0 0 0 3px #edf8f5}
+.project-card strong,.project-card span,.project-card small{display:block}.project-card strong{font-size:12px}.project-card span{font-size:9px;color:#667085;margin-top:3px}.project-card small{font-size:8px;color:#98a2b3;margin-top:5px}.project-card .p-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.project-card .p-actions button{padding:6px 8px;font-size:9px}.empty-projects{border:1px dashed #cfd6dc;border-radius:12px;padding:24px;text-align:center;color:#667085;font-size:11px;grid-column:1/-1}
+.export-modal .modal{width:min(560px,100%)}.export-options{display:grid;gap:9px;margin-top:10px}.export-option{display:flex;gap:10px;align-items:flex-start;border:1px solid #e4e7ec;border-radius:10px;padding:11px;cursor:pointer}.export-option:has(input:checked){border-color:#79b5a4;background:#f7fcfa}.export-option input{margin-top:2px;accent-color:#0d6b58}.export-option strong,.export-option small{display:block}.export-option strong{font-size:11px}.export-option small{font-size:9px;color:#667085;margin-top:2px}.export-note{margin-top:10px;padding:9px 10px;border-radius:9px;background:#f8fafb;color:#667085;font-size:9px}
+@media(max-width:760px){.projects-list{grid-template-columns:1fr}.top .actions{flex-wrap:wrap;justify-content:flex-end}.projects-modal .modal,.export-modal .modal{max-height:calc(100vh - 16px)}}
