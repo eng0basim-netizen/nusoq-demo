@@ -1,0 +1,1 @@
+(()=>{document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#pdfExportBtn');if(!b)return;const fn=b.onclick;if(typeof fn!=='function')return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();fn.call(b,e)},true)})();
