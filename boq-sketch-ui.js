@@ -1,0 +1,17 @@
+(()=>{
+'use strict';
+const q=(s,p=document)=>p.querySelector(s), qa=(s,p=document)=>[...p.querySelectorAll(s)];
+function buttonByText(rx,exclude){return qa('button').find(b=>b!==exclude&&rx.test((b.textContent||'').trim()))}
+function openProjects(){const home=q('#workspaceHome');if(home){home.classList.add('on');home.scrollTop=0;return}const b=buttonByText(/my projects|projects/i);if(b)b.click()}
+function sidebar(){const side=q('.side');if(!side||q('#sketchBackProjects'))return;const brand=q('.brand',side);const back=document.createElement('button');back.id='sketchBackProjects';back.className='sketch-back-projects';back.textContent='←  My BOQ Projects';back.onclick=openProjects;brand?.insertAdjacentElement('afterend',back);
+ const labels={1:['Start / Import','New BOQ source'],2:['Project','Project setup'],3:['Layout','Page & header'],4:['BOQ','Items & quantities'],5:['Review','Export & checks']};qa('.step',side).forEach(s=>{const a=labels[+s.dataset.step];if(!a)return;const sp=q('span',s),sm=q('small',s);if(sp)sp.textContent=a[0];if(sm)sm.textContent=a[1]});syncStart();}
+function syncStart(){const side=q('.side');if(!side)return;side.classList.toggle('is-start',!!q('.screen[data-screen="1"].on'))}
+function toolHeader(){const head=q('.workspace-head');if(!head||q('.sketch-account',head))return;const left=head.firstElementChild;if(left){const e=document.createElement('div');e.className='sketch-tool-name';e.textContent='BOQ CREATOR';left.insertBefore(e,left.firstChild);const h=q('h1',left);if(h)h.textContent='My BOQ Projects';const p=q('p',left);if(p)p.textContent='Open a saved project or start a new BOQ.'}
+ const acc=document.createElement('div');acc.className='sketch-account';acc.innerHTML='<div class="sketch-avatar">BA</div><div><strong>Basim Alzahrani</strong><span>Personal subscription • Active</span></div>';head.appendChild(acc);}
+function triggerExport(type,project){const open=q('[data-open]',project);if(open)open.click();setTimeout(()=>{const rx=type==='pdf'?/pdf|print/i:/excel|xlsx/i;const btn=qa('button').find(b=>rx.test((b.textContent||'').trim())&&!b.classList.contains('sketch-export'));if(btn)btn.click();else if(window.toast)toast((type==='pdf'?'PDF':'Excel')+' export is available after opening the project.');},350)}
+function projectActions(){qa('.workspace-project').forEach(card=>{const acts=q('.workspace-actions',card);if(!acts||q('.sketch-export',acts))return;const pdf=document.createElement('button');pdf.className='sketch-export';pdf.textContent='PDF';pdf.onclick=e=>{e.stopPropagation();triggerExport('pdf',card)};const xls=document.createElement('button');xls.className='sketch-export';xls.textContent='Excel';xls.onclick=e=>{e.stopPropagation();triggerExport('xls',card)};acts.insertBefore(xls,acts.children[1]||null);acts.insertBefore(pdf,acts.children[1]||null);});}
+function topActions(){const actions=q('.top .actions');if(!actions||q('#sketchTopProjects'))return;const p=document.createElement('button');p.id='sketchTopProjects';p.className='sketch-mini-action';p.textContent='My Projects';p.onclick=openProjects;actions.insertBefore(p,actions.firstChild);}
+function improve(){sidebar();toolHeader();projectActions();topActions();syncStart()}
+const obs=new MutationObserver(improve);obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+setTimeout(improve,350);setTimeout(improve,1000);
+})();
