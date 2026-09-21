@@ -1,47 +1,83 @@
 (()=>{
 'use strict';
 const AR=/[\u0600-\u06FF]/;
+const KEY='nusoq-boq-final-v1';
 const aliases={
  code:['item code','item no','item no.','item number','code','no.','no','رقم البند','رقم','كود البند','الكود'],
  division:['division','div','division no','division code','القسم','الديفجن','رقم القسم'],
- nameEn:['item name en','item name (en)','name en','english item name','اسم البند en'],
+ nameEn:['item name en','item name (en)','name en','english item name'],
  nameAr:['item name ar','item name (ar)','name ar','arabic item name','اسم البند','اسم البند عربي'],
- descEn:['description en','description (en)','english description','item description en','وصف en'],
- descAr:['description ar','description (ar)','arabic description','item description ar','الوصف','وصف البند','البيان'],
- description:['description','item description','scope description','scope','work description','البيان','الوصف','وصف البند'],
+ descEn:['description en','description (en)','english description','item description en'],
+ descAr:['description ar','description (ar)','arabic description','item description ar','الوصف العربي'],
+ description:['description','item description','scope description','work description','البيان','الوصف','وصف البند'],
  unit:['unit','uom','unit of measure','measurement unit','الوحدة','وحدة القياس'],
  qty:['qty','quantity','q.ty','الكمية','كمية'],
  rate:['rate','unit rate','price','unit price','السعر','سعر الوحدة'],
- amount:['amount','total','total amount','value','الإجمالي','الاجمالي','القيمة','المبلغ']
+ amount:['amount','total amount','value','الإجمالي','الاجمالي','القيمة','المبلغ']
 };
-let book=null, rows=[], headerRow=0, headers=[], selectedFile=null;
 const norm=v=>String(v??'').trim().toLowerCase().replace(/\s+/g,' ');
+const text=v=>String(v??'').trim();
 const num=v=>{if(typeof v==='number')return Number.isFinite(v)?v:0;const s=String(v??'').replace(/,/g,'').replace(/[^0-9.\-]/g,'');const n=parseFloat(s);return Number.isFinite(n)?n:0};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function findCol(key){const list=aliases[key]||[];let best=-1;headers.forEach((h,i)=>{const n=norm(h);if(best>=0)return;if(list.includes(n)||list.some(a=>n.includes(a)))best=i});return best}
-function detectHeader(data){let best={row:0,score:-1};for(let r=0;r<Math.min(data.length,25);r++){const vals=(data[r]||[]).map(norm);let score=0;for(const key of ['code','division','description','unit','qty','rate','amount']){if(vals.some(v=>(aliases[key]||[]).some(a=>v===a||v.includes(a))))score++}if(score>best.score)best={row:r,score}}return best.row}
-function splitText(text){const s=String(text??'').trim();if(!s)return{en:'',ar:''};const lines=s.split(/\n+/).map(x=>x.trim()).filter(Boolean);const ar=lines.filter(x=>AR.test(x)).join('\n');const en=lines.filter(x=>!AR.test(x)).join('\n');if(ar&&en)return{en,ar};return AR.test(s)?{en:'',ar:s}:{en:s,ar:''}}
-function inferDivision(rawCode,rawDivision,current){const valid=new Set((window.DIVS||[]).map(d=>d.code));const take=v=>{const m=String(v??'').match(/(?:division\s*)?(\d{1,2})/i);if(!m)return'';const d=m[1].padStart(2,'0');return valid.has(d)?d:''};return take(rawDivision)||take(rawCode)||current||'OTHER'}
-function headingDivision(row){for(const c of row||[]){const t=String(c??'').trim();const m=t.match(/division\s*(\d{1,2})/i);if(m)return m[1].padStart(2,'0');const ma=t.match(/(?:قسم|ديفجن)\s*(\d{1,2})/);if(ma)return ma[1].padStart(2,'0')}return''}
-function injectStyle(){if(document.querySelector('#excelImportStyle'))return;const st=document.createElement('style');st.id='excelImportStyle';st.textContent=`
-#excelImportModal .modal{width:min(1080px,100%)}.ximap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ximap label{font-size:9px;font-weight:800;color:#475467}.ximap select{display:block;width:100%;margin-top:5px;border:1px solid #d0d5dd;border-radius:8px;padding:8px;background:#fff}.xipreview{margin-top:14px;border:1px solid #e4e7ec;border-radius:10px;overflow:auto;max-height:340px}.xipreview table{border-collapse:collapse;width:max-content;min-width:100%;font-size:9px}.xipreview th,.xipreview td{border-right:1px solid #e4e7ec;border-bottom:1px solid #e4e7ec;padding:7px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.xipreview th{position:sticky;top:0;background:#f2f4f7;z-index:1}.xirow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.xirow label{font-size:10px}.xiinfo{background:#f7fcfa;border:1px solid #d6eee7;padding:10px;border-radius:9px;font-size:10px;color:#475467;margin-top:10px}.xisheet{display:grid;grid-template-columns:1fr 180px;gap:10px;align-items:end}@media(max-width:760px){.ximap{grid-template-columns:1fr}.xisheet{grid-template-columns:1fr}}
-`;document.head.appendChild(st)}
-function injectModal(){if(document.querySelector('#excelImportModal'))return;document.body.insertAdjacentHTML('beforeend',`<div class="modalbg" id="excelImportModal"><div class="modal"><div class="mhead"><div><span class="eye">Excel Import</span><h3>Map Excel columns</h3><p>Nusoq detected the sheet structure. Review the mapping before importing.</p></div><button class="mx" id="xiClose">×</button></div><div class="mcontent"><div class="xisheet"><label class="field">Worksheet<select id="xiSheet"></select></label><label class="field">Header row<input id="xiHeader" type="number" min="1" value="1"></label></div><div class="ximap" id="xiMap"></div><div class="xiinfo" id="xiInfo"></div><div class="xipreview" id="xiPreview"></div></div><div class="mactions"><div class="xirow"><label><input type="radio" name="xiMode" value="replace" checked> Replace current BOQ</label><label><input type="radio" name="xiMode" value="append"> Append to current BOQ</label></div><div class="actions"><button class="btn sec" id="xiCancel">Cancel</button><button class="btn pri" id="xiImport">Import Items</button></div></div></div></div>`);document.querySelector('#xiClose').onclick=document.querySelector('#xiCancel').onclick=closeModal;document.querySelector('#xiSheet').onchange=()=>loadSheet(document.querySelector('#xiSheet').value);document.querySelector('#xiHeader').onchange=()=>{headerRow=Math.max(0,+document.querySelector('#xiHeader').value-1);rebuild()};document.querySelector('#xiImport').onclick=doImport}
-function closeModal(){document.querySelector('#excelImportModal')?.classList.remove('on')}
-function options(selected=-1){let out='<option value="-1">— Not mapped —</option>';headers.forEach((h,i)=>out+='<option value="'+i+'" '+(i===selected?'selected':'')+'>'+esc(h||('Column '+(i+1)))+'</option>');return out}
-function mapUI(){const m={code:findCol('code'),division:findCol('division'),nameEn:findCol('nameEn'),nameAr:findCol('nameAr'),descEn:findCol('descEn'),descAr:findCol('descAr'),description:findCol('description'),unit:findCol('unit'),qty:findCol('qty'),rate:findCol('rate'),amount:findCol('amount')};const fields=[['code','Item Code'],['division','Division'],['nameEn','Item Name EN'],['nameAr','اسم البند AR'],['descEn','Description EN'],['descAr','الوصف AR'],['description','Single Description'],['unit','Unit'],['qty','Quantity'],['rate','Unit Rate'],['amount','Amount']];const box=document.querySelector('#xiMap');box.innerHTML=fields.map(([k,l])=>`<label>${l}<select data-xi="${k}">${options(m[k])}</select></label>`).join('');box.querySelectorAll('select').forEach(s=>s.onchange=renderPreview)}
-function currentMap(){const o={};document.querySelectorAll('[data-xi]').forEach(s=>o[s.dataset.xi]=+s.value);return o}
-function renderPreview(){const m=currentMap(),data=rows.slice(headerRow+1,headerRow+9);const cols=[['code','Code'],['division','Division'],['nameEn','Name EN'],['nameAr','Name AR'],['descEn','Desc EN'],['descAr','Desc AR'],['description','Description'],['unit','Unit'],['qty','Qty'],['rate','Rate'],['amount','Amount']].filter(([k])=>m[k]>=0);let h='<table><thead><tr>'+cols.map(c=>'<th>'+c[1]+'</th>').join('')+'</tr></thead><tbody>';data.forEach(r=>{h+='<tr>'+cols.map(([k])=>'<td>'+esc(r[m[k]]??'')+'</td>').join('')+'</tr>'});h+='</tbody></table>';document.querySelector('#xiPreview').innerHTML=h}
-function rebuild(){headers=(rows[headerRow]||[]).map((v,i)=>String(v??'').trim()||('Column '+(i+1)));mapUI();renderPreview();const count=Math.max(0,rows.length-headerRow-1);document.querySelector('#xiInfo').innerHTML='<b>'+count+'</b> data rows detected in <b>'+esc(document.querySelector('#xiSheet').value)+'</b>. Nusoq will skip blank rows and Division heading rows.'}
-function loadSheet(name){if(!book)return;const sh=book.Sheets[name];rows=XLSX.utils.sheet_to_json(sh,{header:1,defval:'',raw:false,blankrows:false});headerRow=detectHeader(rows);document.querySelector('#xiHeader').value=headerRow+1;rebuild()}
-async function openFile(file){if(!window.XLSX){toast('Excel import engine is loading. Try again in a moment.');return}selectedFile=file;try{const buf=await file.arrayBuffer();book=XLSX.read(buf,{type:'array',cellDates:false});const sel=document.querySelector('#xiSheet');sel.innerHTML=book.SheetNames.map(n=>'<option>'+esc(n)+'</option>').join('');loadSheet(book.SheetNames[0]);document.querySelector('#excelImportModal').classList.add('on')}catch(e){console.error(e);toast('Could not read this Excel file.') }}
+function headerScore(row){const vals=(row||[]).map(norm);let score=0;['code','division','description','nameEn','nameAr','unit','qty','rate','amount'].forEach(k=>{if(vals.some(v=>(aliases[k]||[]).some(a=>v===a||v.includes(a))))score++});return score}
+function detectHeader(data){let best={row:-1,score:0};for(let r=0;r<Math.min(data.length,35);r++){const score=headerScore(data[r]);if(score>best.score)best={row:r,score}}return best}
+function mapHeaders(headers){const m={};Object.keys(aliases).forEach(k=>{m[k]=-1;headers.forEach((h,i)=>{if(m[k]>=0)return;const n=norm(h);if((aliases[k]||[]).some(a=>n===a||n.includes(a)))m[k]=i})});return m}
 function get(row,idx){return idx>=0?(row[idx]??''):''}
-function buildItems(){const m=currentMap(),out=[];let currentDiv='';let seq=Date.now();for(let r=headerRow+1;r<rows.length;r++){const row=rows[r]||[];if(row.every(v=>String(v??'').trim()===''))continue;const hd=headingDivision(row);const rawQty=get(row,m.qty),rawRate=get(row,m.rate),rawAmt=get(row,m.amount);const hasNumbers=num(rawQty)||num(rawRate)||num(rawAmt);if(hd&&!hasNumbers){currentDiv=hd;continue}const rawCode=get(row,m.code),rawDivision=get(row,m.division);let div=inferDivision(rawCode,rawDivision,currentDiv);let nameEn=String(get(row,m.nameEn)||'').trim(),nameAr=String(get(row,m.nameAr)||'').trim(),descEn=String(get(row,m.descEn)||'').trim(),descAr=String(get(row,m.descAr)||'').trim();const single=String(get(row,m.description)||'').trim();if(single&&!descEn&&!descAr&&!nameEn&&!nameAr){const s=splitText(single);if(s.en)nameEn=s.en;if(s.ar)nameAr=s.ar}else if(single&&!descEn&&!descAr){const s=splitText(single);descEn=s.en;descAr=s.ar}
- if(!nameEn&&!nameAr&&!descEn&&!descAr)continue;
- const unit=String(get(row,m.unit)||'').trim();let qty=num(rawQty),rate=num(rawRate),amount=num(rawAmt);if(!rate&&amount&&qty)rate=amount/qty;if(!qty&&amount&&rate)qty=amount/rate;if(!qty&&/^ls$/i.test(unit))qty=1;
- const bilingual=(nameEn||descEn)&&(nameAr||descAr);out.push({id:seq++,division:div,customEn:div==='OTHER'?'Imported BOQ':'',customAr:div==='OTHER'?'جدول كميات مستورد':'',scope:S.breakdown==='entire'?'Entire Building':'Imported',nameEn,nameAr,descEn,descAr,qty,unit,rate,needsReview:!bilingual});}
- return out}
-function doImport(){const items=buildItems();if(!items.length){toast('No BOQ items were detected. Check the column mapping.');return}const mode=document.querySelector('input[name="xiMode"]:checked')?.value||'replace';if(mode==='replace')S.items=items;else S.items=[...(S.items||[]),...items];localStorage.setItem('nusoq-boq-final-v1',JSON.stringify(S));try{editor()}catch(e){}try{preview()}catch(e){}try{changed()}catch(e){}closeModal();go(4);setTimeout(()=>{document.querySelector('#save')?.click()},200);toast(items.length+' BOQ items imported from Excel.');}
-function wire(){injectStyle();injectModal();const label=[...document.querySelectorAll('label.source')].find(l=>/Import Excel/i.test(l.textContent));if(!label)return;const input=label.querySelector('input[type=file]');const small=label.querySelector('small');if(small)small.textContent='Read Excel, map columns, preview and import';input.accept='.xlsx,.xls,.xlsm,.xlsb';input.addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)openFile(f);e.target.value=''},true)}
-setTimeout(wire,300);
+function takeDivision(v){const valid=new Set((window.DIVS||[]).map(d=>d.code));const m=String(v??'').match(/(?:division\s*)?(\d{1,2})/i);if(!m)return'';const d=m[1].padStart(2,'0');return valid.has(d)?d:''}
+function divisionFromCode(v){const s=String(v??'').trim();const six=s.match(/^(\d{2})\d{4}$/);if(six)return takeDivision(six[1]);const m=s.match(/^(\d{1,2})[.\-_\s]/);return m?takeDivision(m[1]):''}
+function divisionFromSheet(name){return takeDivision(name)}
+function headingDivision(row){for(const c of row||[]){const t=text(c);const m=t.match(/division\s*(\d{1,2})/i);if(m)return takeDivision(m[1]);const a=t.match(/(?:قسم|ديفجن)\s*(\d{1,2})/);if(a)return takeDivision(a[1])}return''}
+function makeItem(row,m,currentDiv,sheetDiv,id){
+ const importedCode=text(get(row,m.code));
+ const explicitDiv=takeDivision(get(row,m.division));
+ const division=explicitDiv||divisionFromCode(importedCode)||currentDiv||sheetDiv||'OTHER';
+ let nameEn=text(get(row,m.nameEn)),nameAr=text(get(row,m.nameAr));
+ let descEn=text(get(row,m.descEn)),descAr=text(get(row,m.descAr));
+ const single=text(get(row,m.description));
+ if(single&&!descEn&&!descAr){if(AR.test(single))descAr=single;else descEn=single}
+ const unit=text(get(row,m.unit));
+ const qtyRaw=get(row,m.qty),rateRaw=get(row,m.rate),amountRaw=get(row,m.amount);
+ const qty=num(qtyRaw),rate=num(rateRaw),importedAmount=m.amount>=0?num(amountRaw):null;
+ if(!nameEn&&!nameAr&&!descEn&&!descAr)return null;
+ return {id,division,customEn:division==='OTHER'?'Imported BOQ':'',customAr:division==='OTHER'?'جدول كميات مستورد':'',scope:S.breakdown==='entire'?'Entire Building':'Imported',nameEn,nameAr,descEn,descAr,qty,unit,rate,needsReview:false,imported:true,importedCode,importedAmount,sourceQty:text(qtyRaw),sourceRate:text(rateRaw),sourceAmount:text(amountRaw)};
+}
+function extractSheet(ws,name){
+ const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false,blankrows:false});
+ const det=detectHeader(data);if(det.row<0||det.score<2)return {items:[],recognized:false,score:det.score};
+ const headers=(data[det.row]||[]).map(v=>text(v));const m=mapHeaders(headers);
+ const hasText=[m.description,m.descEn,m.descAr,m.nameEn,m.nameAr].some(i=>i>=0);
+ if(!hasText)return {items:[],recognized:false,score:det.score};
+ const out=[];let currentDiv='',seq=Date.now()+Math.floor(Math.random()*10000),sheetDiv=divisionFromSheet(name);
+ for(let r=det.row+1;r<data.length;r++){
+   const row=data[r]||[];if(row.every(v=>text(v)===''))continue;
+   const hd=headingDivision(row);
+   const maybeText=[m.description,m.descEn,m.descAr,m.nameEn,m.nameAr].map(i=>text(get(row,i))).join('');
+   const hasNumeric=[m.qty,m.rate,m.amount].some(i=>i>=0&&text(get(row,i))!=='');
+   if(hd&&!hasNumeric&&!maybeText){currentDiv=hd;continue}
+   if(hd&&!hasNumeric&&row.filter(v=>text(v)).length<=2){currentDiv=hd;continue}
+   const item=makeItem(row,m,currentDiv,sheetDiv,seq++);if(item)out.push(item);
+ }
+ return {items:out,recognized:true,score:det.score,headerRow:det.row,headers,map:m};
+}
+function saveImported(items,fileName,sheetCount){
+ S.items=items;S.importMeta={fileName,sheetCount,importedAt:new Date().toISOString(),mode:'exact'};
+ localStorage.setItem(KEY,JSON.stringify(S));
+ try{editor()}catch(e){}try{preview()}catch(e){}try{changed()}catch(e){}try{go(4)}catch(e){}
+ setTimeout(()=>{try{document.querySelector('#save')?.click()}catch(e){}},150);
+ if(typeof toast==='function')toast(items.length+' items imported exactly from Excel.');
+}
+function injectFallback(){if(document.querySelector('#excelFallback'))return;const st=document.createElement('style');st.textContent='#excelFallback .modal{width:min(760px,100%)} .xi-note{background:#fff8e8;border:1px solid #f2d39b;border-radius:9px;padding:11px;font-size:10px;color:#7a4b09;margin-top:10px}.xi-preview{max-height:310px;overflow:auto;border:1px solid #e4e7ec;border-radius:9px;margin-top:12px}.xi-preview table{border-collapse:collapse;width:100%;font-size:9px}.xi-preview th,.xi-preview td{padding:7px;border-bottom:1px solid #e4e7ec;text-align:left}.xi-preview th{background:#f2f4f7}';document.head.appendChild(st);document.body.insertAdjacentHTML('beforeend',`<div class="modalbg" id="excelFallback"><div class="modal"><div class="mhead"><div><span class="eye">Excel Import</span><h3>Could not identify the BOQ columns automatically</h3><p>Nusoq did not change the file. Use a clear header row and try again.</p></div><button class="mx" id="xefClose">×</button></div><div class="mcontent"><div class="xi-note">Recommended headers: Item Code, Division, Description, Unit, Qty, Rate, Amount — or their Arabic equivalents.</div><div class="xi-preview"><table><thead><tr><th>Supported English</th><th>Supported Arabic</th></tr></thead><tbody><tr><td>Item Code / Item No.</td><td>رقم البند / كود البند</td></tr><tr><td>Description</td><td>الوصف / البيان</td></tr><tr><td>Unit</td><td>الوحدة / وحدة القياس</td></tr><tr><td>Qty / Quantity</td><td>الكمية</td></tr><tr><td>Rate / Unit Rate</td><td>السعر / سعر الوحدة</td></tr><tr><td>Amount</td><td>الإجمالي / القيمة</td></tr></tbody></table></div></div><div class="mactions"><button class="btn pri" id="xefOk">Close</button></div></div></div>`);const close=()=>document.querySelector('#excelFallback').classList.remove('on');document.querySelector('#xefClose').onclick=document.querySelector('#xefOk').onclick=close}
+async function openFile(file){
+ if(!window.XLSX){toast('Excel engine is loading. Try again in a moment.');return}
+ try{
+   const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:false});
+   let all=[],recognized=0;
+   wb.SheetNames.forEach(name=>{const x=extractSheet(wb.Sheets[name],name);if(x.recognized&&x.items.length){recognized++;all.push(...x.items)}});
+   if(!all.length){injectFallback();document.querySelector('#excelFallback').classList.add('on');return}
+   saveImported(all,file.name,recognized);
+ }catch(e){console.error(e);toast('Could not read this Excel file.')}
+}
+function patchSourceCard(){const label=[...document.querySelectorAll('label.source')].find(l=>/Import Excel/i.test(l.textContent));if(!label)return;const input=label.querySelector('input[type=file]');const small=label.querySelector('small');if(small)small.textContent='Automatic import — keeps source values unchanged';input.accept='.xlsx,.xls,.xlsm,.xlsb';input.addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)openFile(f);e.target.value=''},true)}
+window.NUSOQ_EXCEL_IMPORT={openFile};
+setTimeout(()=>{injectFallback();patchSourceCard()},350);
 })();
