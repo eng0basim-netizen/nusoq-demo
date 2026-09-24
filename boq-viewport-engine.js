@@ -5,210 +5,71 @@ const ORDER=['00','01','02','03','04','05','06','07','08','09','10','11','12','1
 const FALLBACK={
 '00':['Procurement and Contracting Requirements','متطلبات التعاقد والشراء'],'01':['General Requirements','المتطلبات العامة'],'02':['Existing Conditions','الظروف القائمة للموقع'],'03':['Concrete','الخرسانة'],'04':['Masonry','المباني'],'05':['Metals','المعادن'],'06':['Wood, Plastics, and Composites','الخشب والبلاستيك والمواد المركبة'],'07':['Thermal and Moisture Protection','العزل والرطوبة'],'08':['Openings','الفتحات'],'09':['Finishes','التشطيبات'],'10':['Specialties','المواد التخصصية'],'11':['Equipment','المعدات'],'12':['Furnishings','التأثيث'],'13':['Special Construction','الإنشاءات الخاصة'],'14':['Conveying Equipment','أنظمة النقل'],'21':['Fire Suppression','أنظمة إطفاء الحريق'],'22':['Plumbing','الأعمال الصحية والسباكة'],'23':['HVAC','التكييف والتهوية'],'26':['Electrical','الأعمال الكهربائية'],'27':['Communications','أنظمة الاتصالات'],'28':['Electronic Safety and Security','الأنظمة الأمنية'],'31':['Earthwork','الأعمال الترابية'],'32':['Exterior Improvements','التحسينات الخارجية'],'33':['Utilities','المرافق والبنية التحتية'],'OTHER':['Other / Custom Scope','أخرى / سكوب خاص']};
 
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const fmt=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const amount=i=>(+i.qty||0)*(+i.rate||0);
-const divOrder=d=>{const n=ORDER.indexOf(d);return n<0?999:n};
+const divOrder=d=>{const i=ORDER.indexOf(d);return i<0?999:i};
 const itemCode=(i,n,d)=>String(i.importedCode||i.itemCode||i.code||'').trim()||((d==='OTHER'?'99':String(d||'00').padStart(2,'0'))+'01'+String(n).padStart(2,'0'));
 
-function state(){
-  try{return typeof S!=='undefined'?S:JSON.parse(localStorage.getItem('nusoq-boq-final-v1')||'{}')}catch(e){return {}}
-}
-function names(d,items){
-  let b=(window.DIVS&&window.DIVS[d])||FALLBACK[d]||FALLBACK.OTHER;
-  if(!Array.isArray(b)) b=[b.en||b[0]||'',b.ar||b[1]||''];
-  if(d==='OTHER'&&items?.[0]) return [items[0].customEn||b[0],items[0].customAr||b[1]];
-  return b;
-}
-function groups(s){
-  const map=new Map();
-  [...(s.items||[])].sort((a,b)=>divOrder(a.division||'OTHER')-divOrder(b.division||'OTHER')||(Number(a.id)||0)-(Number(b.id)||0)).forEach(i=>{
-    const d=i.division||'OTHER';
-    if(!map.has(d))map.set(d,[]);
-    map.get(d).push(i);
-  });
-  return [...map.entries()].map(([d,items])=>{const n=names(d,items);return{d,items,en:n[0],ar:n[1],total:items.reduce((a,x)=>a+amount(x),0)}});
-}
-function totals(s){
-  const sub=(s.items||[]).reduce((a,i)=>a+amount(i),0);
-  const vp=Number.isFinite(+(s.vatPct??s.project?.vat))?+(s.vatPct??s.project?.vat):15;
-  const vat=sub*vp/100;
-  return{sub,vp,vat,total:sub+vat};
-}
-
+function getState(){try{return typeof S!=='undefined'?S:JSON.parse(localStorage.getItem('nusoq-boq-final-v1')||'{}')}catch(e){return {}}}
+function divNames(d,items){let x=(window.DIVS&&window.DIVS[d])||FALLBACK[d]||FALLBACK.OTHER;if(!Array.isArray(x))x=[x.en||'',x.ar||''];if(d==='OTHER'&&items?.[0])return[items[0].customEn||x[0],items[0].customAr||x[1]];return x}
+function groups(s){const m=new Map();[...(s.items||[])].sort((a,b)=>divOrder(a.division||'OTHER')-divOrder(b.division||'OTHER')||(Number(a.id)||0)-(Number(b.id)||0)).forEach(i=>{const d=i.division||'OTHER';if(!m.has(d))m.set(d,[]);m.get(d).push(i)});return[...m.entries()].map(([d,items])=>{const n=divNames(d,items);return{d,items,en:n[0],ar:n[1],total:items.reduce((a,x)=>a+amount(x),0)}})}
+function totals(s){const sub=(s.items||[]).reduce((a,i)=>a+amount(i),0),vp=Number.isFinite(+(s.vatPct??s.project?.vat))?+(s.vatPct??s.project?.vat):15,vat=sub*vp/100;return{sub,vp,vat,total:sub+vat}}
 function logo(p){return `<div class="vx-logo"><div class="vx-logo-box">${p.logo?`<img src="${p.logo}">`:esc(p.en||p.role||'LOGO')}</div><small>${esc(p.role||'')}</small></div>`}
 function project(s){return `<div class="vx-project"><b>${esc(s.project?.pen||'')}</b><span dir="rtl">${esc(s.project?.par||'')}</span><small>${esc(s.project?.pno||'')} • ${esc(s.project?.rev||'')}</small></div>`}
-function header(s){
-  const ps=s.parties||[],all=ps.map(logo).join(''),mid=Math.ceil(ps.length/2);
-  if(s.layout==='logorow')return `<div class="vx-h-logo"><div class="vx-logo-row">${all}</div>${project(s)}</div>`;
-  if(s.layout==='minimal')return `<div class="vx-h-min">${project(s)}<div class="vx-logo-row">${all}</div></div>`;
-  if(s.layout==='project')return `<div class="vx-h-project">${project(s)}<div class="vx-logo-row">${all}</div></div>`;
-  return `<div class="vx-h-balanced"><div class="vx-logo-row">${ps.slice(0,mid).map(logo).join('')}</div>${project(s)}<div class="vx-logo-row">${ps.slice(mid).map(logo).join('')}</div></div>`;
-}
-function itemText(i,s){
-  const en=`<b>${esc(i.nameEn||'')}</b>${i.descEn?'<br>'+esc(i.descEn):''}`;
-  const ar=`<div dir="rtl"><b>${esc(i.nameAr||'')}</b>${i.descAr?'<br>'+esc(i.descAr):''}</div>`;
-  return s.lang==='en'?en:s.lang==='ar'?ar:`${en}<div class="vx-ar">${ar}</div>`;
-}
+function header(s){const ps=s.parties||[],all=ps.map(logo).join(''),mid=Math.ceil(ps.length/2);if(s.layout==='logorow')return `<div class="vx-h-logo"><div class="vx-logo-row">${all}</div>${project(s)}</div>`;if(s.layout==='minimal')return `<div class="vx-h-min">${project(s)}<div class="vx-logo-row">${all}</div></div>`;if(s.layout==='project')return `<div class="vx-h-project">${project(s)}<div class="vx-logo-row">${all}</div></div>`;return `<div class="vx-h-balanced"><div class="vx-logo-row">${ps.slice(0,mid).map(logo).join('')}</div>${project(s)}<div class="vx-logo-row">${ps.slice(mid).map(logo).join('')}</div></div>`}
+function itemText(i,s){const en=`<b>${esc(i.nameEn||'')}</b>${i.descEn?'<br>'+esc(i.descEn):''}`,ar=`<div dir="rtl"><b>${esc(i.nameAr||'')}</b>${i.descAr?'<br>'+esc(i.descAr):''}</div>`;return s.lang==='en'?en:s.lang==='ar'?ar:`${en}<div class="vx-ar">${ar}</div>`}
 
 function css(){return `
 *{box-sizing:border-box}
-.vx-stage{position:fixed;left:-100000px;top:0;pointer-events:none;background:#fff;font-family:Arial,"Segoe UI",Tahoma,sans-serif;color:#101828}
-.vx-page{position:relative;background:#fff;overflow:hidden;box-sizing:border-box}.vx-page.p{width:210mm;height:297mm}.vx-page.l{width:297mm;height:210mm}
-/* The page frame is fixed. Header/footer never participate in content flow. */
+.vx-stage{position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;z-index:-99999;background:#fff;font-family:Arial,"Segoe UI",Tahoma,sans-serif;color:#101828}.vx-stage.ready{left:-100000px;visibility:visible}
+.vx-page{position:relative;background:#fff;overflow:hidden}.vx-page.p{width:210mm;height:297mm}.vx-page.l{width:297mm;height:210mm}
 .vx-header{position:absolute;left:10mm;right:10mm;top:7mm;height:23mm;border-bottom:.4mm solid #667085;padding-bottom:2mm;background:#fff;overflow:hidden;display:flex;align-items:center}
-.vx-footer{position:absolute;left:10mm;right:10mm;bottom:5mm;height:8mm;border-top:.3mm solid #98a2b3;padding-top:1.5mm;background:#fff;display:flex;align-items:flex-start;justify-content:space-between;font-size:7pt;color:#667085}
-.vx-footer b{color:#101828}
-/* AutoCAD-style paper viewport: BOQ content exists only inside this rectangle. */
-.vx-viewport{position:absolute;left:10mm;right:10mm;top:34mm;bottom:18mm;overflow:hidden;background:#fff}
-.vx-viewport.items{bottom:27mm}
-.vx-page-total{position:absolute;left:10mm;right:10mm;bottom:18mm;height:7mm;border-top:.22mm solid #d0d5dd;padding-top:1.35mm;background:#fff;display:flex;justify-content:flex-end;gap:8mm;font-size:7pt}
+.vx-footer{position:absolute;left:10mm;right:10mm;bottom:5mm;height:8mm;border-top:.3mm solid #98a2b3;padding-top:1.5mm;background:#fff;display:flex;justify-content:space-between;align-items:flex-start;font-size:7pt;color:#667085}.vx-footer b{color:#101828}
+.vx-viewport{position:absolute;left:10mm;right:10mm;top:34mm;bottom:18mm;overflow:hidden;background:#fff}.vx-viewport.items{bottom:27mm}.vx-page-total{position:absolute;left:10mm;right:10mm;bottom:18mm;height:7mm;border-top:.22mm solid #d0d5dd;padding-top:1.35mm;background:#fff;display:flex;justify-content:flex-end;gap:8mm;font-size:7pt}
 .vx-h-balanced{width:100%;display:grid;grid-template-columns:1fr 1.45fr 1fr;gap:4mm;align-items:center}.vx-h-min,.vx-h-project{width:100%;display:flex;align-items:center;justify-content:space-between;gap:4mm}.vx-h-logo{width:100%;text-align:center}.vx-logo-row{display:flex;align-items:center;justify-content:center;gap:2.5mm;min-width:0}.vx-logo{width:24mm;text-align:center;min-width:0}.vx-logo-box{height:9mm;display:flex;align-items:center;justify-content:center;font-size:6pt;font-weight:700;overflow:hidden}.vx-logo img{max-width:100%;max-height:100%;object-fit:contain}.vx-logo small{display:block;font-size:5pt;color:#667085;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vx-project{text-align:center;min-width:42mm}.vx-h-min .vx-project,.vx-h-project .vx-project{text-align:left}.vx-project b,.vx-project span,.vx-project small{display:block}.vx-project b{font-size:9pt}.vx-project span{font-size:7.2pt;margin-top:.4mm}.vx-project small{font-size:6pt;color:#667085;margin-top:.5mm}
 .vx-title{text-align:center;margin:0 0 3mm}.vx-title b,.vx-title span{display:block}.vx-title b{font-size:12pt}.vx-title span{font-size:8.5pt;margin-top:.7mm}
-.vx-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:6.5pt;line-height:1.22}.vx-table th,.vx-table td{border:.22mm solid #cfd6dc;padding:1.25mm;vertical-align:top;overflow-wrap:anywhere;word-break:normal}.vx-table th{background:#e8f0ee;font-weight:800}.vx-table.items th:nth-child(1),.vx-table.items td:nth-child(1){width:13%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:800;white-space:nowrap}.vx-table.items th:nth-child(2),.vx-table.items td:nth-child(2){width:43%}.vx-table.items th:nth-child(3),.vx-table.items td:nth-child(3){width:8%}.vx-table.items th:nth-child(n+4),.vx-table.items td:nth-child(n+4){width:12%;text-align:right}.vx-table.summary th:nth-child(1),.vx-table.summary td:nth-child(1){width:14%}.vx-table.summary th:nth-child(2),.vx-table.summary td:nth-child(2){width:25%}.vx-table.summary th:nth-child(3),.vx-table.summary td:nth-child(3){width:25%}.vx-table.summary th:nth-child(4),.vx-table.summary td:nth-child(4){width:18%}.vx-table.summary th:nth-child(5),.vx-table.summary td:nth-child(5){width:8%;text-align:center}.vx-table.summary th:nth-child(6),.vx-table.summary td:nth-child(6){width:10%;text-align:right}
+.vx-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:6.5pt;line-height:1.22}.vx-table th,.vx-table td{border:.22mm solid #cfd6dc;padding:1.25mm;vertical-align:top;overflow-wrap:anywhere}.vx-table th{background:#e8f0ee;font-weight:800}.vx-table.items th:nth-child(1),.vx-table.items td:nth-child(1){width:13%;font-family:ui-monospace,monospace;font-weight:800;white-space:nowrap}.vx-table.items th:nth-child(2),.vx-table.items td:nth-child(2){width:43%}.vx-table.items th:nth-child(3),.vx-table.items td:nth-child(3){width:8%}.vx-table.items th:nth-child(n+4),.vx-table.items td:nth-child(n+4){width:12%;text-align:right}.vx-table.summary th:nth-child(1),.vx-table.summary td:nth-child(1){width:14%}.vx-table.summary th:nth-child(2),.vx-table.summary td:nth-child(2){width:25%}.vx-table.summary th:nth-child(3),.vx-table.summary td:nth-child(3){width:25%}.vx-table.summary th:nth-child(4),.vx-table.summary td:nth-child(4){width:18%}.vx-table.summary th:nth-child(5),.vx-table.summary td:nth-child(5){width:8%;text-align:center}.vx-table.summary th:nth-child(6),.vx-table.summary td:nth-child(6){width:10%;text-align:right}
 .vx-ar{border-top:.2mm dashed #d0d5dd;margin-top:1mm;padding-top:1mm}.vx-scope td{background:#eef4ff!important;color:#3538cd;font-weight:800}.vx-divtitle{background:#edf7f4;border-left:1.2mm solid #0b6b58;padding:2.2mm 3mm;margin-bottom:2.5mm}.vx-divtitle b,.vx-divtitle span{display:block}.vx-divtitle b{font-size:9pt}.vx-divtitle span{font-size:7.4pt;margin-top:.5mm}
 .vx-summary-total{width:105mm;margin:4mm 0 0 auto;border:1px solid #cfd6dc}.vx-summary-total div{display:flex;justify-content:space-between;gap:8mm;padding:1.4mm 2mm;border-bottom:1px solid #e4e7ec;font-size:7.2pt}.vx-summary-total div:last-child{border-bottom:0}.vx-summary-total .grand{background:#edf7f4;font-weight:800}
 .vx-cover{position:absolute;left:10mm;right:10mm;top:10mm;bottom:18mm;display:flex;flex-direction:column;overflow:hidden}.vx-cover>.vx-logo-row{margin-top:3mm}.vx-cover-title{text-align:center;margin:auto 0}.vx-cover-title>span{font-size:10pt;font-weight:900;letter-spacing:.12em;color:#0b6b58}.vx-cover-title h1{font-size:23pt;margin:4mm 0 2mm}.vx-cover-title h2{font-size:15pt;margin:0;color:#344054}.vx-cover-title p{font-size:8pt;color:#667085}.vx-totalbox{width:105mm;margin:4mm auto 0;border:1px solid #cfd6dc}.vx-totalbox div{display:flex;justify-content:space-between;gap:8mm;padding:1.5mm 2mm;border-bottom:1px solid #e4e7ec;font-size:7.5pt}.vx-totalbox div:last-child{border-bottom:0}.vx-totalbox .grand{background:#0b6b58;color:#fff;font-weight:800}
 .vx-divcover{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10mm}.vx-divcover .code{font-size:11pt;font-weight:900;letter-spacing:.12em;color:#0b6b58}.vx-divcover h1{font-size:24pt;margin:5mm 0 2mm}.vx-divcover h2{font-size:16pt;margin:0;color:#475467}.vx-divcover .stats{display:grid;grid-template-columns:1fr 1fr;gap:4mm;width:min(120mm,80%);margin-top:10mm}.vx-divcover .stats div{border:1px solid #d0d5dd;border-radius:3mm;padding:5mm}.vx-divcover .stats small,.vx-divcover .stats b{display:block}.vx-divcover .stats small{font-size:7pt;color:#667085}.vx-divcover .stats b{font-size:13pt;margin-top:2mm}
 .vx-table.compact{font-size:5.5pt;line-height:1.15}.vx-table.compact th,.vx-table.compact td{padding:1mm}.vx-table.ultra{font-size:4.7pt;line-height:1.1}.vx-table.ultra th,.vx-table.ultra td{padding:.8mm}
-#paperIn,#paperIn2{position:relative;width:100%;height:100%;overflow:hidden;background:#fff}.vx-preview-page{position:absolute!important;left:0;top:0;transform-origin:top left;box-shadow:none!important}.vx-preview-nav{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:7px;font-size:9px;color:#667085}.vx-preview-nav button{border:1px solid #e4e7ec;background:#fff;border-radius:7px;padding:4px 8px;cursor:pointer;font-weight:800}.vx-preview-nav button:disabled{opacity:.35;cursor:not-allowed}
+#paperIn,#paperIn2{position:relative;width:100%;height:100%;overflow:hidden;background:#fff}.vx-preview-page{position:absolute!important;left:0;top:0;transform-origin:top left}.vx-preview-nav{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:7px;font-size:9px;color:#667085}.vx-preview-nav button{border:1px solid #e4e7ec;background:#fff;border-radius:7px;padding:4px 8px;cursor:pointer;font-weight:800}.vx-preview-nav button:disabled{opacity:.35;cursor:not-allowed}
 `}
 function ensureStyle(){if(document.getElementById('vx-style'))return;const e=document.createElement('style');e.id='vx-style';e.textContent=css();document.head.appendChild(e)}
-
 function footer(s,label){return `<div class="vx-footer"><span>${esc(s.project?.pno||'')}${label?' • '+esc(label):''}</span><b class="vx-page-no"></b></div>`}
-function makePage(stage,s,label,{kind='content',items=false,division=''}={}){
-  const p=document.createElement('section');
-  p.className='vx-page '+(s.ori==='l'?'l':'p');
-  p.dataset.kind=kind;if(division)p.dataset.division=division;
-  p.innerHTML=`<div class="vx-header">${header(s)}</div><div class="vx-viewport ${items?'items':''}"></div>${items?'<div class="vx-page-total"></div>':''}${footer(s,label)}`;
-  stage.appendChild(p);return p;
-}
-function fits(page,guard=3){
-  const v=page.querySelector('.vx-viewport');if(!v)return true;
-  const last=v.lastElementChild;if(!last)return true;
-  const vb=v.getBoundingClientRect(),lb=last.getBoundingClientRect();
-  return v.scrollHeight<=v.clientHeight-guard&&lb.bottom<=vb.bottom-guard;
-}
-function mainCover(stage,s){
-  const t=totals(s),p=document.createElement('section');p.className='vx-page '+(s.ori==='l'?'l':'p');p.dataset.kind='cover';
-  p.innerHTML=`<div class="vx-cover"><div class="vx-logo-row">${(s.parties||[]).map(logo).join('')}</div><div class="vx-cover-title"><span>BILL OF QUANTITIES</span><h1>${esc(s.project?.pen||'')}</h1><h2 dir="rtl">${esc(s.project?.par||'')}</h2><p>${esc(s.project?.pno||'')} • ${esc(s.project?.rev||'')}</p></div><div class="vx-totalbox"><div><span>Subtotal before VAT</span><b>${fmt(t.sub)} SAR</b></div><div><span>VAT (${t.vp.toFixed(2)}%)</span><b>${fmt(t.vat)} SAR</b></div><div class="grand"><span>Grand Total incl. VAT</span><b>${fmt(t.total)} SAR</b></div></div></div>${footer(s,'Cover')}`;
-  stage.appendChild(p);
-}
-function summaryPage(stage,s,cont){
-  const p=makePage(stage,s,cont?'Summary Continued':'Summary',{kind:'summary'}),v=p.querySelector('.vx-viewport');
-  v.innerHTML=`<div class="vx-title"><b>BOQ Division Summary${cont?' — Continued':''}</b><span dir="rtl">ملخص أقسام جدول الكميات${cont?' — تابع':''}</span></div><table class="vx-table summary"><thead><tr><th>Division</th><th>English</th><th>العربية</th><th>Item Code Range</th><th>Items</th><th>Amount</th></tr></thead><tbody></tbody></table>`;
-  return p;
-}
+function makePage(stage,s,label,{kind='content',items=false,division=''}={}){const p=document.createElement('section');p.className='vx-page '+(s.ori==='l'?'l':'p');p.dataset.kind=kind;if(division)p.dataset.division=division;p.innerHTML=`<div class="vx-header">${header(s)}</div><div class="vx-viewport ${items?'items':''}"></div>${items?'<div class="vx-page-total"></div>':''}${footer(s,label)}`;stage.appendChild(p);return p}
+function viewportFits(p){const v=p.querySelector('.vx-viewport');return !v||v.scrollHeight<=v.clientHeight-2}
+function mainCover(stage,s){const t=totals(s),p=document.createElement('section');p.className='vx-page '+(s.ori==='l'?'l':'p');p.dataset.kind='cover';p.innerHTML=`<div class="vx-cover"><div class="vx-logo-row">${(s.parties||[]).map(logo).join('')}</div><div class="vx-cover-title"><span>BILL OF QUANTITIES</span><h1>${esc(s.project?.pen||'')}</h1><h2 dir="rtl">${esc(s.project?.par||'')}</h2><p>${esc(s.project?.pno||'')} • ${esc(s.project?.rev||'')}</p></div><div class="vx-totalbox"><div><span>Subtotal before VAT</span><b>${fmt(t.sub)} SAR</b></div><div><span>VAT (${t.vp.toFixed(2)}%)</span><b>${fmt(t.vat)} SAR</b></div><div class="grand"><span>Grand Total incl. VAT</span><b>${fmt(t.total)} SAR</b></div></div></div>${footer(s,'Cover')}`;stage.appendChild(p)}
+
+function summaryPage(stage,s,cont){const p=makePage(stage,s,cont?'Summary Continued':'Summary',{kind:'summary'}),v=p.querySelector('.vx-viewport');v.innerHTML=`<div class="vx-title"><b>BOQ Division Summary${cont?' — Continued':''}</b><span dir="rtl">ملخص أقسام جدول الكميات${cont?' — تابع':''}</span></div><table class="vx-table summary"><thead><tr><th>Division</th><th>English</th><th>العربية</th><th>Item Code Range</th><th>Items</th><th>Amount</th></tr></thead><tbody></tbody></table>`;return p}
+function summaryRow(g){const tr=document.createElement('tr'),first=itemCode(g.items[0],1,g.d),last=itemCode(g.items[g.items.length-1],g.items.length,g.d);tr.innerHTML=`<td>${g.d==='OTHER'?'OTHER':'Division '+esc(g.d)}</td><td>${esc(g.en)}</td><td dir="rtl">${esc(g.ar)}</td><td>${esc(first)} – ${esc(last)}</td><td>${g.items.length}</td><td>${fmt(g.total)}</td>`;return tr}
 function buildSummary(stage,s,gs){
-  let p=summaryPage(stage,s,false),body=p.querySelector('tbody');
-  gs.forEach(g=>{
-    const tr=document.createElement('tr'),first=itemCode(g.items[0],1,g.d),last=itemCode(g.items[g.items.length-1],g.items.length,g.d);
-    tr.innerHTML=`<td>${g.d==='OTHER'?'OTHER':'Division '+esc(g.d)}</td><td>${esc(g.en)}</td><td dir="rtl">${esc(g.ar)}</td><td>${esc(first)} – ${esc(last)}</td><td>${g.items.length}</td><td>${fmt(g.total)}</td>`;
-    body.appendChild(tr);
-    if(!fits(p)){
-      tr.remove();p=summaryPage(stage,s,true);body=p.querySelector('tbody');body.appendChild(tr);
-    }
-  });
-  const t=totals(s),box=document.createElement('div');box.className='vx-summary-total';box.innerHTML=`<div><span>Subtotal before VAT</span><b>${fmt(t.sub)} SAR</b></div><div><span>VAT (${t.vp.toFixed(2)}%)</span><b>${fmt(t.vat)} SAR</b></div><div class="grand"><span>Grand Total incl. VAT</span><b>${fmt(t.total)} SAR</b></div>`;
-  p.querySelector('.vx-viewport').appendChild(box);
-  if(!fits(p)){box.remove();p=summaryPage(stage,s,true);p.querySelector('.vx-viewport').appendChild(box)}
+  const maxRows=s.ori==='l'?12:18;
+  const chunks=[];for(let i=0;i<gs.length;i+=maxRows)chunks.push(gs.slice(i,i+maxRows));
+  if(!chunks.length)chunks.push([]);
+  chunks.forEach((chunk,idx)=>{const p=summaryPage(stage,s,idx>0),body=p.querySelector('tbody');chunk.forEach(g=>body.appendChild(summaryRow(g)));if(idx===chunks.length-1){const t=totals(s),box=document.createElement('div');box.className='vx-summary-total';box.innerHTML=`<div><span>Subtotal before VAT</span><b>${fmt(t.sub)} SAR</b></div><div><span>VAT (${t.vp.toFixed(2)}%)</span><b>${fmt(t.vat)} SAR</b></div><div class="grand"><span>Grand Total incl. VAT</span><b>${fmt(t.total)} SAR</b></div>`;p.querySelector('.vx-viewport').appendChild(box)}});
 }
-function divisionCover(stage,s,g){
-  const p=makePage(stage,s,(g.d==='OTHER'?'OTHER':'Division '+g.d)+' Cover',{kind:'division-cover',division:g.d}),v=p.querySelector('.vx-viewport');
-  v.innerHTML=`<div class="vx-divcover"><div class="code">${g.d==='OTHER'?'OTHER':'DIVISION '+esc(g.d)}</div><h1>${esc(g.en)}</h1><h2 dir="rtl">${esc(g.ar)}</h2><div class="stats"><div><small>Items / عدد البنود</small><b>${g.items.length}</b></div><div><small>Division Total before VAT / إجمالي الديفجن قبل الضريبة</small><b>${fmt(g.total)} SAR</b></div></div></div>`;
-}
-function itemPage(stage,s,g,cont){
-  const label=(g.d==='OTHER'?'OTHER':'Division '+g.d)+(cont?' Continued':'');
-  const p=makePage(stage,s,label,{kind:'items',items:true,division:g.d}),v=p.querySelector('.vx-viewport');
-  v.innerHTML=`<div class="vx-divtitle"><b>${g.d==='OTHER'?'OTHER':'Division '+esc(g.d)} — ${esc(g.en)}${cont?' — Continued':''}</b><span dir="rtl">${esc(g.ar)}${cont?' — تابع':''}</span></div><table class="vx-table items"><thead><tr><th>Item Code</th><th>Item / Description</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody></tbody></table>`;
-  p.dataset.lastScope='';p._pageItems=[];return p;
-}
-function updatePageTotal(p,g){
-  const sum=(p._pageItems||[]).reduce((a,i)=>a+amount(i),0),bar=p.querySelector('.vx-page-total');
-  if(bar)bar.innerHTML=`<span>Page Total</span><b>${fmt(sum)} SAR</b><span>Division Total</span><b>${fmt(g.total)} SAR</b>`;
-}
-function appendItem(p,s,g,i,seq){
-  const tbody=p.querySelector('tbody'),scope=String(i.scope||'Entire Building'),prev=p.dataset.lastScope||'',nodes=[];
-  if(s.breakdown!=='entire'&&scope!==prev){
-    const sr=document.createElement('tr');sr.className='vx-scope';sr.innerHTML=`<td colspan="6">${esc(scope)}</td>`;tbody.appendChild(sr);nodes.push(sr);p.dataset.lastScope=scope;
-  }
-  const tr=document.createElement('tr');tr.innerHTML=`<td>${esc(itemCode(i,seq,g.d))}</td><td>${itemText(i,s)}</td><td>${esc(i.unit||'')}</td><td>${fmt(i.qty)}</td><td>${fmt(i.rate)}</td><td>${fmt(amount(i))}</td>`;tbody.appendChild(tr);nodes.push(tr);
-  return{nodes,prevScope:prev};
-}
+
+function divisionCover(stage,s,g){const p=makePage(stage,s,(g.d==='OTHER'?'OTHER':'Division '+g.d)+' Cover',{kind:'division-cover',division:g.d}),v=p.querySelector('.vx-viewport');v.innerHTML=`<div class="vx-divcover"><div class="code">${g.d==='OTHER'?'OTHER':'DIVISION '+esc(g.d)}</div><h1>${esc(g.en)}</h1><h2 dir="rtl">${esc(g.ar)}</h2><div class="stats"><div><small>Items / عدد البنود</small><b>${g.items.length}</b></div><div><small>Division Total before VAT / إجمالي الديفجن قبل الضريبة</small><b>${fmt(g.total)} SAR</b></div></div></div>`}
+function itemPage(stage,s,g,cont){const label=(g.d==='OTHER'?'OTHER':'Division '+g.d)+(cont?' Continued':'');const p=makePage(stage,s,label,{kind:'items',items:true,division:g.d}),v=p.querySelector('.vx-viewport');v.innerHTML=`<div class="vx-divtitle"><b>${g.d==='OTHER'?'OTHER':'Division '+esc(g.d)} — ${esc(g.en)}${cont?' — Continued':''}</b><span dir="rtl">${esc(g.ar)}${cont?' — تابع':''}</span></div><table class="vx-table items"><thead><tr><th>Item Code</th><th>Item / Description</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody></tbody></table>`;p.dataset.lastScope='';p._pageItems=[];return p}
+function updatePageTotal(p,g){const sum=(p._pageItems||[]).reduce((a,i)=>a+amount(i),0),bar=p.querySelector('.vx-page-total');if(bar)bar.innerHTML=`<span>Page Total</span><b>${fmt(sum)} SAR</b><span>Division Total</span><b>${fmt(g.total)} SAR</b>`}
+function appendItem(p,s,g,i,seq){const tbody=p.querySelector('tbody'),scope=String(i.scope||'Entire Building'),prev=p.dataset.lastScope||'',nodes=[];if(s.breakdown!=='entire'&&scope!==prev){const sr=document.createElement('tr');sr.className='vx-scope';sr.innerHTML=`<td colspan="6">${esc(scope)}</td>`;tbody.appendChild(sr);nodes.push(sr);p.dataset.lastScope=scope}const tr=document.createElement('tr');tr.innerHTML=`<td>${esc(itemCode(i,seq,g.d))}</td><td>${itemText(i,s)}</td><td>${esc(i.unit||'')}</td><td>${fmt(i.qty)}</td><td>${fmt(i.rate)}</td><td>${fmt(amount(i))}</td>`;tbody.appendChild(tr);nodes.push(tr);return{nodes,prevScope:prev}}
 function removeCandidate(p,c){c.nodes.forEach(n=>n.remove());p.dataset.lastScope=c.prevScope}
-function forceSingleRowFit(p){
-  const t=p.querySelector('.vx-table');if(fits(p))return;
-  t.classList.add('compact');if(fits(p))return;
-  t.classList.add('ultra');
-}
-function buildDivisionItems(stage,s,g){
-  let p=itemPage(stage,s,g,false),seq=0;
-  for(const i of g.items){
-    seq++;
-    let c=appendItem(p,s,g,i,seq);
-    if(!fits(p)){
-      removeCandidate(p,c);updatePageTotal(p,g);
-      p=itemPage(stage,s,g,true);c=appendItem(p,s,g,i,seq);
-      if(!fits(p))forceSingleRowFit(p);
-    }
-    p._pageItems.push(i);updatePageTotal(p,g);
-  }
-}
-function numberPages(stage){
-  const pages=[...stage.querySelectorAll('.vx-page')],total=pages.length;
-  pages.forEach((p,i)=>{const n=p.querySelector('.vx-page-no');if(n)n.textContent=`Page ${i+1} of ${total}`});
-}
-function buildDocument(s=state()){
-  ensureStyle();document.querySelector('.vx-stage')?.remove();
-  const stage=document.createElement('div');stage.className='vx-stage';document.body.appendChild(stage);
-  const gs=groups(s);
-  mainCover(stage,s);buildSummary(stage,s,gs);
-  gs.forEach(g=>{divisionCover(stage,s,g);buildDivisionItems(stage,s,g)});
-  numberPages(stage);window.NUSOQ_BOQ_STAGE=stage;return stage;
-}
+function forceSingleRowFit(p){const t=p.querySelector('.vx-table');if(viewportFits(p))return;t.classList.add('compact');if(viewportFits(p))return;t.classList.add('ultra')}
+function buildDivisionItems(stage,s,g){let p=itemPage(stage,s,g,false),seq=0;for(const i of g.items){seq++;let c=appendItem(p,s,g,i,seq);if(!viewportFits(p)){removeCandidate(p,c);updatePageTotal(p,g);p=itemPage(stage,s,g,true);c=appendItem(p,s,g,i,seq);if(!viewportFits(p))forceSingleRowFit(p)}p._pageItems.push(i);updatePageTotal(p,g)}}
+function numberPages(stage){const pages=[...stage.querySelectorAll('.vx-page')],total=pages.length;pages.forEach((p,i)=>{const n=p.querySelector('.vx-page-no');if(n)n.textContent=`Page ${i+1} of ${total}`})}
+function buildDocument(s=getState()){ensureStyle();document.querySelector('.vx-stage')?.remove();const stage=document.createElement('div');stage.className='vx-stage';document.body.appendChild(stage);const gs=groups(s);mainCover(stage,s);buildSummary(stage,s,gs);gs.forEach(g=>{divisionCover(stage,s,g);buildDivisionItems(stage,s,g)});numberPages(stage);stage.classList.add('ready');window.NUSOQ_BOQ_STAGE=stage;return stage}
 
-const previewState={paperIn:null,paperIn2:null};
-function ensureNav(host){
-  const paper=host.closest('.paper');if(!paper)return null;let nav=paper.parentElement.querySelector(`.vx-preview-nav[data-for="${host.id}"]`);
-  if(!nav){nav=document.createElement('div');nav.className='vx-preview-nav';nav.dataset.for=host.id;nav.innerHTML='<button data-dir="-1">‹</button><span></span><button data-dir="1">›</button>';paper.insertAdjacentElement('afterend',nav);nav.querySelectorAll('button').forEach(b=>b.onclick=()=>{const total=window.NUSOQ_BOQ_STAGE?.querySelectorAll('.vx-page').length||0;let idx=Number(host.dataset.vxIndex||0)+Number(b.dataset.dir);idx=Math.max(0,Math.min(total-1,idx));host.dataset.vxIndex=idx;renderHost(host)})}
-  return nav;
-}
-function defaultIndex(host,pages){
-  const kind=host.id==='paperIn2'?'items':'summary';const n=pages.findIndex(p=>p.dataset.kind===kind);return n>=0?n:0;
-}
-function renderHost(host){
-  const stage=window.NUSOQ_BOQ_STAGE||buildDocument(),pages=[...stage.querySelectorAll('.vx-page')];if(!pages.length)return;
-  let idx=host.dataset.vxIndex===''||host.dataset.vxIndex==null?defaultIndex(host,pages):Number(host.dataset.vxIndex);idx=Math.max(0,Math.min(pages.length-1,idx));host.dataset.vxIndex=idx;host.innerHTML='';
-  const clone=pages[idx].cloneNode(true);clone.classList.add('vx-preview-page');host.appendChild(clone);
-  const fit=()=>{const sx=host.clientWidth/clone.offsetWidth,sy=host.clientHeight/clone.offsetHeight,sc=Math.min(sx,sy);clone.style.transform=`scale(${sc})`;clone.style.left=((host.clientWidth-clone.offsetWidth*sc)/2)+'px';clone.style.top=((host.clientHeight-clone.offsetHeight*sc)/2)+'px'};requestAnimationFrame(fit);
-  const nav=ensureNav(host);if(nav){nav.querySelector('span').textContent=`Page ${idx+1} / ${pages.length}`;const bs=nav.querySelectorAll('button');bs[0].disabled=idx===0;bs[1].disabled=idx===pages.length-1}
-}
-let buildTimer=0;
-function refreshPreview(){
-  clearTimeout(buildTimer);buildTimer=setTimeout(()=>{buildDocument();['paperIn','paperIn2'].forEach(id=>{const h=document.getElementById(id);if(h)renderHost(h)})},20);
-}
-try{preview=refreshPreview}catch(e){window.preview=refreshPreview}
+function ensureNav(host){const paper=host.closest('.paper');if(!paper)return null;let nav=paper.parentElement.querySelector(`.vx-preview-nav[data-for="${host.id}"]`);if(!nav){nav=document.createElement('div');nav.className='vx-preview-nav';nav.dataset.for=host.id;nav.innerHTML='<button data-dir="-1">‹</button><span></span><button data-dir="1">›</button>';paper.insertAdjacentElement('afterend',nav);nav.querySelectorAll('button').forEach(b=>b.onclick=()=>{const total=window.NUSOQ_BOQ_STAGE?.querySelectorAll('.vx-page').length||0;let idx=Number(host.dataset.vxIndex||0)+Number(b.dataset.dir);idx=Math.max(0,Math.min(total-1,idx));host.dataset.vxIndex=idx;renderHost(host)})}return nav}
+function defaultIndex(host,pages){const kind=host.id==='paperIn2'?'items':'summary',n=pages.findIndex(p=>p.dataset.kind===kind);return n>=0?n:0}
+function renderHost(host){const stage=window.NUSOQ_BOQ_STAGE||buildDocument(),pages=[...stage.querySelectorAll('.vx-page')];if(!pages.length)return;let idx=host.dataset.vxIndex===''||host.dataset.vxIndex==null?defaultIndex(host,pages):Number(host.dataset.vxIndex);idx=Math.max(0,Math.min(pages.length-1,idx));host.dataset.vxIndex=idx;host.innerHTML='';const clone=pages[idx].cloneNode(true);clone.classList.add('vx-preview-page');host.appendChild(clone);requestAnimationFrame(()=>{const sc=Math.min(host.clientWidth/clone.offsetWidth,host.clientHeight/clone.offsetHeight);clone.style.transform=`scale(${sc})`;clone.style.left=((host.clientWidth-clone.offsetWidth*sc)/2)+'px';clone.style.top=((host.clientHeight-clone.offsetHeight*sc)/2)+'px'});const nav=ensureNav(host);if(nav){nav.querySelector('span').textContent=`Page ${idx+1} / ${pages.length}`;const b=nav.querySelectorAll('button');b[0].disabled=idx===0;b[1].disabled=idx===pages.length-1}}
+let timer=0;function refreshPreview(){clearTimeout(timer);timer=setTimeout(()=>{buildDocument();['paperIn','paperIn2'].forEach(id=>{const h=document.getElementById(id);if(h)renderHost(h)})},20)}
+window.preview=refreshPreview;
 
-async function exportPDF(){
-  const btn=document.getElementById('pdfExportBtn'),old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='Generating PDF…'}
-  try{
-    if(!window.html2canvas||!window.jspdf?.jsPDF)throw new Error('PDF libraries are not ready.');
-    const s=state(),stage=buildDocument(s),pages=[...stage.querySelectorAll('.vx-page')];if(!pages.length)throw new Error('No BOQ pages found.');
-    if(document.fonts?.ready)await document.fonts.ready;
-    const landscape=s.ori==='l',pdf=new window.jspdf.jsPDF({orientation:landscape?'landscape':'portrait',unit:'mm',format:'a4',compress:true});
-    for(let i=0;i<pages.length;i++){
-      if(i)pdf.addPage('a4',landscape?'landscape':'portrait');
-      const canvas=await window.html2canvas(pages[i],{scale:1.55,useCORS:true,backgroundColor:'#ffffff',logging:false,width:pages[i].offsetWidth,height:pages[i].offsetHeight});
-      const w=landscape?297:210,h=landscape?210:297;pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,w,h,undefined,'FAST');
-    }
-    const name=(s.project?.pno||'Nusoq-BOQ').replace(/[^a-z0-9_-]+/gi,'-');pdf.save(`${name}-BOQ.pdf`);
-  }catch(e){console.error(e);alert('Unable to generate PDF: '+(e.message||e))}finally{if(btn){btn.disabled=false;btn.textContent=old||'PDF'}}
-}
-
-document.addEventListener('click',e=>{
-  const b=e.target.closest?.('#pdfExportBtn');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();exportPDF();
-},true);
-
+async function exportPDF(){const btn=document.getElementById('pdfExportBtn'),old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='Generating PDF…'}try{if(!window.html2canvas||!window.jspdf?.jsPDF)throw new Error('PDF libraries are not ready.');const s=getState(),stage=buildDocument(s),pages=[...stage.querySelectorAll('.vx-page')];if(document.fonts?.ready)await document.fonts.ready;const landscape=s.ori==='l',pdf=new window.jspdf.jsPDF({orientation:landscape?'landscape':'portrait',unit:'mm',format:'a4',compress:true});for(let i=0;i<pages.length;i++){if(i)pdf.addPage('a4',landscape?'landscape':'portrait');const canvas=await window.html2canvas(pages[i],{scale:1.55,useCORS:true,backgroundColor:'#fff',logging:false,width:pages[i].offsetWidth,height:pages[i].offsetHeight});pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,landscape?297:210,landscape?210:297,undefined,'FAST')}const name=(s.project?.pno||'Nusoq-BOQ').replace(/[^a-z0-9_-]+/gi,'-');pdf.save(`${name}-BOQ.pdf`)}catch(e){console.error(e);alert('Unable to generate PDF: '+(e.message||e))}finally{if(btn){btn.disabled=false;btn.textContent=old||'PDF'}}}
+document.addEventListener('click',e=>{const b=e.target.closest?.('#pdfExportBtn');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();exportPDF()},true);
 function start(){ensureStyle();refreshPreview();setTimeout(refreshPreview,250)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 window.NUSOQ_BOQ_VIEWPORT={buildDocument,refreshPreview,exportPDF};
